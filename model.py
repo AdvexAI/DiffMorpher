@@ -333,7 +333,7 @@ class DiffMorpherPipeline(StableDiffusionPipeline):
     def image2latent(self, image):
         DEVICE = torch.device(
             "cuda") if torch.cuda.is_available() else torch.device("cpu")
-        if type(image) is Image:
+        if type(image) is Image.Image:
             image = np.array(image)
             image = torch.from_numpy(image).float() / 127.5 - 1
             image = image.permute(2, 0, 1).unsqueeze(0)
