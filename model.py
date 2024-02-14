@@ -14,7 +14,7 @@ from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer
 from diffusers import StableDiffusionPipeline
 from argparse import ArgumentParser
 
-from utils.model_utils import get_img, slerp, do_replace_attn
+from utils.model_utils import get_img, slerp, do_replace_attn, modify_t
 from utils.lora_utils import train_lora, load_lora
 from utils.alpha_scheduler import AlphaScheduler
 
@@ -120,7 +120,7 @@ class LoadProcessor():
         # Is self attention
         if encoder_hidden_states is None:
             # hardcode timestep
-            if self.id < 50 * self.lamd:
+            if self.id < 50 * self.lamd: # TODO: CHANGE THIS
                 map0 = self.img0_dict[self.name][self.id]
                 map1 = self.img1_dict[self.name][self.id]
                 cross_map = self.beta * hidden_states + \
@@ -367,6 +367,7 @@ class DiffMorpherPipeline(StableDiffusionPipeline):
         #     torch.sin(alpha * torch.pi / 2) * img_noise_1
         # latents = (1 - alpha) * img_noise_0 + alpha * img_noise_1
         # latents = latents / ((1 - alpha) ** 2 + alpha ** 2)
+        
         latents = slerp(img_noise_0, img_noise_1, alpha, self.use_adain)
         text_embeddings = (1 - alpha) * text_embeddings_0 + \
             alpha * text_embeddings_1
@@ -660,16 +661,16 @@ class DiffMorpherPipeline(StableDiffusionPipeline):
             if self.use_reschedule:
                 alpha_scheduler = AlphaScheduler()
                 alpha_list = list(torch.linspace(0, 1, num_frames))
+                
                 images_pt = morph(alpha_list, progress, "Sampling...")
                 images_pt = [transforms.ToTensor()(img).unsqueeze(0)
                              for img in images_pt]
                 alpha_scheduler.from_imgs(images_pt)
                 alpha_list = alpha_scheduler.get_list()
-                print(alpha_list)
                 images = morph(alpha_list, progress, "Reschedule...")
             else:
-                alpha_list = list(torch.linspace(0, 1, num_frames))
-                print(alpha_list)
+                alpha_list = torch.linspace(0, 1, num_frames)
+                alpha_list = list(modify_t(alpha_list)) # NOTE: Using Density based sampling
                 images = morph(alpha_list, progress, "Sampling...")
 
         return images

@@ -80,6 +80,32 @@ def slerp(p0, p1, fract_mixing: float, adain=True):
 
     return interp
 
+def modify_t(samples, beta=10):
+    
+    def mod(t, beta=10):
+        return torch.exp(-beta * (t - 0.5)**2)
+    
+    num_samples = len(samples)
+    
+    # Calculate the weights for each sample
+    weights = mod(samples, beta)
+    
+    # Normalize the weights to sum to 1
+    normalized_weights = weights / weights.sum()
+    
+    # Sample new indices based on the weights
+    indices = torch.multinomial(normalized_weights, num_samples, replacement=True)
+    
+    # Sort the selected indices to maintain the ascending order
+    sorted_indices = torch.sort(indices).values
+    
+    # Select samples based on the sampled indices
+    dense_samples = samples[sorted_indices]
+    
+    # Add in slight noise to avoid duplicates
+    dense_samples += torch.rand_like(dense_samples) * 1e-1
+    
+    return dense_samples
 
 def do_replace_attn(key: str):
     # return key.startswith('up_blocks.2') or key.startswith('up_blocks.3')
